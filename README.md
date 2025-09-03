@@ -1,139 +1,153 @@
 # sistema-de-gestion-de-biblioteca-dijital
 todo de python
-# Sistema de Gestión de Biblioteca Digital
+# Clase que representa un libro en la biblioteca
+class Libro:
+    def __init__(self, titulo, autor, categoria, isbn):
+        # Autor y título son inmutables, se almacenan en una tupla
+        self.info = (titulo, autor)
+        self.categoria = categoria
+        self.isbn = isbn
 
-## 📖 Visión General
-El **Sistema de Gestión de Biblioteca Digital** es una plataforma diseñada para facilitar la administración, consulta y préstamo de recursos bibliográficos en formato físico y digital. 
-Busca optimizar la experiencia tanto de los usuarios lectores como del personal bibliotecario, permitiendo la gestión centralizada del catálogo, usuarios y transacciones.
+    def __str__(self):
+        return f"'{self.info[0]}' por {self.info[1]} | Categoría: {self.categoria} | ISBN: {self.isbn}"
 
----
+# Clase que representa un usuario de la biblioteca
+class Usuario:
+    def __init__(self, nombre, id_usuario):
+        self.nombre = nombre
+        self.id_usuario = id_usuario
+        # Lista para almacenar libros actualmente prestados
+        self.libros_prestados = []
 
-## 🎯 Objetivos del Sistema
-- Centralizar la gestión del catálogo de libros y recursos digitales.
-- Permitir a los usuarios realizar búsquedas, reservas y préstamos en línea.
-- Proporcionar a los bibliotecarios herramientas para la administración de usuarios y recursos.
-- Ofrecer métricas e informes sobre uso, disponibilidad y estadísticas de préstamos.
+    def listar_libros_prestados(self):
+        if self.libros_prestados:
+            print(f"Libros prestados a {self.nombre}:")
+            for libro in self.libros_prestados:
+                print(f" - {libro}")
+        else:
+            print(f"{self.nombre} no tiene libros prestados.")
 
----
+# Clase que gestiona la biblioteca
+class Biblioteca:
+    def __init__(self):
+        # Diccionario para almacenar libros, clave = ISBN
+        self.libros = {}
+        # Diccionario para almacenar usuarios, clave = ID
+        self.usuarios = {}
+        # Conjunto para asegurar IDs únicos
+        self.ids_usuarios = set()
 
-## 👥 Actores del Sistema
-- **Usuario lector**: Consulta el catálogo, realiza préstamos y devoluciones.
-- **Bibliotecario**: Administra recursos, usuarios y controla los préstamos.
-- **Administrador del sistema**: Configura parámetros globales y gestiona roles.
+    # Función para añadir un libro
+    def agregar_libro(self, libro):
+        if libro.isbn not in self.libros:
+            self.libros[libro.isbn] = libro
+            print(f"Libro '{libro.info[0]}' agregado a la biblioteca.")
+        else:
+            print(f"El libro con ISBN {libro.isbn} ya existe.")
 
----
+    # Función para quitar un libro
+    def quitar_libro(self, isbn):
+        if isbn in self.libros:
+            del self.libros[isbn]
+            print(f"Libro con ISBN {isbn} eliminado de la biblioteca.")
+        else:
+            print(f"No se encontró un libro con ISBN {isbn}.")
 
-## ⚙️ Funcionalidades Principales
-1. **Gestión de usuarios**
-   - Registro, autenticación y administración de perfiles.
-   - Control de roles (lector, bibliotecario, administrador).
+    # Función para registrar un usuario
+    def registrar_usuario(self, usuario):
+        if usuario.id_usuario not in self.ids_usuarios:
+            self.usuarios[usuario.id_usuario] = usuario
+            self.ids_usuarios.add(usuario.id_usuario)
+            print(f"Usuario '{usuario.nombre}' registrado exitosamente.")
+        else:
+            print(f"ID de usuario {usuario.id_usuario} ya existe.")
 
-2. **Gestión de recursos**
-   - Alta, baja y modificación de libros y documentos digitales.
-   - Clasificación por categorías, autores y palabras clave.
-   - Carga de archivos en formato digital (PDF, ePub, etc.).
+    # Función para dar de baja a un usuario
+    def dar_baja_usuario(self, id_usuario):
+        if id_usuario in self.usuarios:
+            del self.usuarios[id_usuario]
+            self.ids_usuarios.remove(id_usuario)
+            print(f"Usuario con ID {id_usuario} dado de baja.")
+        else:
+            print(f"No se encontró un usuario con ID {id_usuario}.")
 
-3. **Préstamos y devoluciones**
-   - Solicitud de préstamos físicos y digitales.
-   - Renovaciones y reservas en línea.
-   - Control de fechas y penalizaciones por retraso.
+    # Función para prestar un libro a un usuario
+    def prestar_libro(self, isbn, id_usuario):
+        if isbn not in self.libros:
+            print(f"No existe un libro con ISBN {isbn}.")
+            return
+        if id_usuario not in self.usuarios:
+            print(f"No existe un usuario con ID {id_usuario}.")
+            return
+        libro = self.libros[isbn]
+        usuario = self.usuarios[id_usuario]
+        usuario.libros_prestados.append(libro)
+        # Se elimina del catálogo disponible
+        del self.libros[isbn]
+        print(f"Libro '{libro.info[0]}' prestado a {usuario.nombre}.")
 
-4. **Búsqueda avanzada**
-   - Filtros por autor, título, categoría y disponibilidad.
-   - Sugerencias personalizadas basadas en historial.
+    # Función para devolver un libro
+    def devolver_libro(self, isbn, id_usuario):
+        if id_usuario not in self.usuarios:
+            print(f"No existe un usuario con ID {id_usuario}.")
+            return
+        usuario = self.usuarios[id_usuario]
+        libro_devuelto = None
+        for libro in usuario.libros_prestados:
+            if libro.isbn == isbn:
+                libro_devuelto = libro
+                break
+        if libro_devuelto:
+            usuario.libros_prestados.remove(libro_devuelto)
+            self.libros[isbn] = libro_devuelto
+            print(f"Libro '{libro_devuelto.info[0]}' devuelto por {usuario.nombre}.")
+        else:
+            print(f"{usuario.nombre} no tiene el libro con ISBN {isbn}.")
 
-5. **Reportes y estadísticas**
-   - Informes de uso de la biblioteca.
-   - Estadísticas de préstamos por periodo, género o usuario.
+    # Función para buscar libros por título, autor o categoría
+    def buscar_libros(self, criterio, valor):
+        resultados = []
+        for libro in self.libros.values():
+            if criterio == "titulo" and valor.lower() in libro.info[0].lower():
+                resultados.append(libro)
+            elif criterio == "autor" and valor.lower() in libro.info[1].lower():
+                resultados.append(libro)
+            elif criterio == "categoria" and valor.lower() in libro.categoria.lower():
+                resultados.append(libro)
+        if resultados:
+            print(f"Resultados de búsqueda por {criterio} '{valor}':")
+            for libro in resultados:
+                print(f" - {libro}")
+        else:
+            print(f"No se encontraron libros por {criterio} '{valor}'.")
 
----
+# -------------------------
+# Ejemplo de uso del sistema
+# -------------------------
 
-## 📂 Arquitectura del Sistema
-El sistema se estructura bajo una arquitectura de **tres capas**:
+# Crear la biblioteca
+biblioteca = Biblioteca()
 
-1. **Capa de presentación (Frontend)**
-   - Interfaz web responsiva y aplicación móvil opcional.
-   - Tecnologías sugeridas: React.js, Angular o Vue.js.
+# Crear libros
+libro1 = Libro("Cien Años de Soledad", "Gabriel García Márquez", "Novela", "12345")
+libro2 = Libro("El Principito", "Antoine de Saint-Exupéry", "Infantil", "67890")
 
-2. **Capa de negocio (Backend)**
-   - API REST para la comunicación entre cliente y servidor.
-   - Tecnologías sugeridas: Node.js (Express), Java (Spring Boot) o Python (Django/Flask).
+# Agregar libros a la biblioteca
+biblioteca.agregar_libro(libro1)
+biblioteca.agregar_libro(libro2)
 
-3. **Capa de datos (Base de datos)**
-   - Gestión de usuarios, recursos y transacciones.
-   - Tecnologías sugeridas: PostgreSQL, MySQL o MongoDB.
+# Registrar usuarios
+usuario1 = Usuario("Ana", "U001")
+usuario2 = Usuario("Luis", "U002")
+biblioteca.registrar_usuario(usuario1)
+biblioteca.registrar_usuario(usuario2)
 
----
+# Prestar y devolver libros
+biblioteca.prestar_libro("12345", "U001")
+usuario1.listar_libros_prestados()
+biblioteca.devolver_libro("12345", "U001")
+usuario1.listar_libros_prestados()
 
-## 🏗️ Módulos del Sistema
-- **Módulo de autenticación y seguridad**
-  - Inicio de sesión, roles y permisos.
-  - Implementación de OAuth2 / JWT para seguridad.
-
-- **Módulo de catálogo**
-  - Gestión de libros, autores y categorías.
-  - Soporte para documentos digitales.
-
-- **Módulo de transacciones**
-  - Préstamos, devoluciones y renovaciones.
-
-- **Módulo de administración**
-  - Configuración del sistema y gestión de usuarios.
-
-- **Módulo de reportes**
-  - Generación de métricas e informes.
-
----
-
-## 📑 Requisitos del Sistema
-
-### Requisitos Funcionales
-- El sistema debe permitir el registro y autenticación de usuarios.
-- Los usuarios deben poder buscar libros y realizar préstamos en línea.
-- Los bibliotecarios deben poder gestionar el catálogo y usuarios.
-- El sistema debe registrar todas las transacciones.
-
-### Requisitos No Funcionales
-- La aplicación debe ser accesible vía navegador web y dispositivos móviles.
-- El sistema debe garantizar seguridad en la autenticación y manejo de datos.
-- Debe soportar concurrencia de múltiples usuarios simultáneos.
-- Respuesta promedio de las consultas: < 2 segundos.
-
----
-
-## 👨‍💻 Manual de Usuario Inicial
-
-### Para lectores:
-1. Registrarse e iniciar sesión.
-2. Buscar libros en el catálogo.
-3. Realizar préstamos o reservas.
-4. Consultar el historial de préstamos.
-
-### Para bibliotecarios:
-1. Iniciar sesión con rol de bibliotecario.
-2. Gestionar usuarios y catálogo.
-3. Aprobar o rechazar préstamos.
-4. Generar reportes.
-
-### Para administradores:
-1. Configurar parámetros globales del sistema.
-2. Gestionar roles y permisos.
-3. Monitorear estadísticas generales.
-
----
-
-## 🚀 Tecnologías Recomendadas
-- **Frontend:** React.js, Angular o Vue.js.
-- **Backend:** Node.js con Express, Django (Python) o Spring Boot (Java).
-- **Base de datos:** PostgreSQL o MongoDB.
-- **Autenticación y seguridad:** OAuth2 / JWT.
-- **Infraestructura:** Contenedores Docker y despliegue en la nube (AWS, Azure o GCP).
-
----
-
-## 📌 Próximos pasos
-- Definir la base de datos relacional y sus relaciones (ERD).
-- Crear prototipos de la interfaz de usuario.
-- Implementar la API REST con endpoints básicos.
-- Realizar pruebas de usabilidad y seguridad.
-
+# Buscar libros
+biblioteca.buscar_libros("autor", "Saint-Exupéry")
+biblioteca.buscar_libros("categoria", "Novela")
