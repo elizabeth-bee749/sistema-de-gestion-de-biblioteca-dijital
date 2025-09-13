@@ -1,0 +1,184 @@
+import tkinter as tk
+from tkinter import ttk
+from tkinter import messagebox
+import threading
+import time
+import winsound  # Solo Windows
+
+# -------------------------------
+# Funciones auxiliares
+# -------------------------------
+
+def reproducir_sonido(frecuencia=500, duracion=100):
+    threading.Thread(target=winsound.Beep, args=(frecuencia, duracion), daemon=True).start()
+
+def animar_item_rebote(item, color1="#ffff99", color2="#ffffff", repeticiones=4, duracion=0.12):
+    """Animación de rebote con parpadeo para ítems añadidos"""
+    for _ in range(repeticiones):
+        lista_items.item(item, tags=('highlight',))
+        ventana.update()
+        time.sleep(duracion)
+        lista_items.item(item, tags=())
+        ventana.update()
+        time.sleep(duracion)
+
+def transicion_fondo():
+    """Animación continua de fondo degradado ultra suave"""
+    while True:
+        for shift in range(60):
+            canvas.delete("all")
+            for i in range(500):
+                r = int(240 - shift*0.3 + (i*0.03)) % 256
+                g = int(244 - shift*0.2 + (i*0.04)) % 256
+                b = int(247 - shift*0.2 + (i*0.05)) % 256
+                color = f'#{r:02x}{g:02x}{b:02x}'
+                canvas.create_line(0, i, 600, i, fill=color)
+            ventana.update()
+            time.sleep(0.03)
+
+def mostrar_notificacion(texto, color="#000"):
+    """Muestra notificación interna con icono y color"""
+    notificacion_label.config(text=texto, fg=color)
+    ventana.after(3000, lambda: notificacion_label.config(text=""))
+
+# -------------------------------
+# Funciones principales
+# -------------------------------
+
+def agregar_item():
+    item = entrada_texto.get().strip()
+    if item:
+        lista_items.insert('', 'end', values=(f"✅ {item}",))
+        entrada_texto.delete(0, tk.END)
+        entrada_texto.focus()
+        reproducir_sonido(700, 100)
+        threading.Thread(target=animar_item_rebote, args=(lista_items.get_children()[-1],), daemon=True).start()
+        mostrar_notificacion(f"Ítem '{item}' agregado ✅", "green")
+    else:
+        messagebox.showwarning("Advertencia", "Ingrese un ítem.")
+
+def eliminar_seleccion():
+    seleccion = lista_items.selection()
+    if seleccion:
+        for item in seleccion:
+            lista_items.delete(item)
+        reproducir_sonido(300, 100)
+        mostrar_notificacion("Ítem(s) eliminado(s) 🗑️", "red")
+    else:
+        messagebox.showwarning("Advertencia", "Seleccione un ítem para eliminar.")
+
+def limpiar_lista():
+    if lista_items.get_children():
+        for item in lista_items.get_children():
+            lista_items.delete(item)
+        reproducir_sonido(400, 150)
+        mostrar_notificacion("Lista limpia 🧹", "blue")
+    else:
+        messagebox.showinfo("Información", "La lista ya está vacía.")
+
+# -------------------------------
+# Ventana principal
+# -------------------------------
+
+ventana = tk.Tk()
+ventana.title("App Ultra-Premium de Gestión de Ítems")
+ventana.geometry("600x500")
+ventana.resizable(False, False)
+
+# -------------------------------
+# Canvas fondo animado
+# -------------------------------
+
+canvas = tk.Canvas(ventana, width=600, height=500)
+canvas.pack(fill="both", expand=True)
+threading.Thread(target=transicion_fondo, daemon=True).start()
+
+# -------------------------------
+# Frame principal
+# -------------------------------
+
+frame_principal = tk.Frame(canvas, bg="#ffffff", bd=4, relief="ridge")
+frame_principal.place(relx=0.5, rely=0.5, anchor="center")
+
+# -------------------------------
+# Estilos ttk
+# -------------------------------
+
+style = ttk.Style()
+style.configure("Treeview", font=("Arial", 12), rowheight=28)
+style.configure("Treeview.Heading", font=("Arial", 12, "bold"))
+style.map("Treeview", background=[('selected', '#cce6ff')])
+lista_items_hover_color = "#e0f7ff"
+style.configure("highlight.Treeview", background="#ffff99")
+
+# -------------------------------
+# Entradas y botones
+# -------------------------------
+
+etiqueta = tk.Label(frame_principal, text="Ingrese un ítem:", bg="#ffffff", font=("Arial", 12))
+etiqueta.grid(row=0, column=0, padx=10, pady=10)
+
+entrada_texto = tk.Entry(frame_principal, width=30, font=("Arial", 12))
+entrada_texto.grid(row=0, column=1, padx=10, pady=10)
+entrada_texto.focus()
+
+# Botones ultra-interactivos
+def crear_boton(texto, bg_color, comando, width=16):
+    btn = tk.Button(frame_principal, text=texto, bg=bg_color, fg="white",
+                    font=("Arial", 11, "bold"), width=width, command=comando, relief="raised", bd=5)
+    def on_enter(e): btn['bg'] = "#cccccc"; btn['relief'] = "sunken"
+    def on_leave(e): btn['bg'] = bg_color; btn['relief'] = "raised"
+    btn.bind("<Enter>", on_enter)
+    btn.bind("<Leave>", on_leave)
+    return btn
+
+boton_agregar = crear_boton("➕ Agregar", "#4CAF50", agregar_item)
+boton_agregar.grid(row=0, column=2, padx=10, pady=10)
+
+boton_eliminar = crear_boton("🗑️ Eliminar Selección", "#f44336", eliminar_seleccion)
+boton_eliminar.grid(row=1, column=0, padx=10, pady=10)
+
+boton_limpiar = crear_boton("🧹 Limpiar Lista", "#2196F3", limpiar_lista)
+boton_limpiar.grid(row=1, column=1, padx=10, pady=10)
+
+# -------------------------------
+# Lista con scroll y efecto hover
+# -------------------------------
+
+frame_lista = tk.Frame(frame_principal, bg="#ffffff")
+frame_lista.grid(row=2, column=0, columnspan=3, padx=10, pady=10)
+
+lista_items = ttk.Treeview(frame_lista, columns=("Item",), show='headings', height=12)
+lista_items.heading("Item", text="Ítems Agregados")
+lista_items.pack(side="left")
+
+scrollbar = ttk.Scrollbar(frame_lista, orient="vertical", command=lista_items.yview)
+lista_items.configure(yscrollcommand=scrollbar.set)
+scrollbar.pack(side="right", fill="y")
+
+lista_items.tag_configure('highlight', background="#ffff99")
+
+# Hover filas con rebote visual
+def on_motion(event):
+    region = lista_items.identify("region", event.x, event.y)
+    if region == "cell":
+        row_id = lista_items.identify_row(event.y)
+        if row_id:
+            for i in lista_items.get_children():
+                lista_items.item(i, tags=())
+            lista_items.item(row_id, tags=('hover',))
+            lista_items.tag_configure('hover', background=lista_items_hover_color)
+lista_items.bind("<Motion>", on_motion)
+
+# -------------------------------
+# Notificación interna
+# -------------------------------
+
+notificacion_label = tk.Label(frame_principal, text="", bg="#ffffff", font=("Arial", 11, "italic"))
+notificacion_label.grid(row=3, column=0, columnspan=3, pady=5)
+
+# -------------------------------
+# Ejecutar aplicación
+# -------------------------------
+
+ventana.mainloop()
